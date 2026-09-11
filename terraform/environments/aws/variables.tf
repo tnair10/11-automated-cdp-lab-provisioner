@@ -131,3 +131,17 @@ variable "nodes" {
     error_message = "Root volumes cannot exceed 60 GB."
   }
 }
+
+variable "availability_zone" {
+  description = "Availability zone used for the Project 11 subnet"
+  type        = string
+  default     = "us-east-1a"
+
+  validation {
+    condition = contains(
+      ["us-east-1a", "us-east-1b", "us-east-1c", "us-east-1d", "us-east-1f"],
+      var.availability_zone
+    )
+    error_message = "availability_zone must be an AZ where m6a.xlarge was verified as available."
+  }
+}

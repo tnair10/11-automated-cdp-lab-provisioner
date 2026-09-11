@@ -5,6 +5,7 @@ EXPECTED_CREATES = 18
 EXPECTED_INSTANCES = 3
 AMI = "ami-03b03811941a02056"
 KEY = "p11-cdp-lab"
+EXPECTED_AZ = "us-east-1a"
 ALLOWED_TYPES = {"m6a.xlarge", "m6i.xlarge"}
 PROHIBITED = {"aws_nat_gateway","aws_db_instance","aws_rds_cluster","aws_eks_cluster","aws_lb","aws_elb"}
 
@@ -76,6 +77,18 @@ for x in instances:
     if 'AUTO_TERMINATE_MINUTES="55"' not in ud or '--on-active="55m"' not in ud:
         fail(f"{a}: 55-minute auto-termination missing")
 
+subnets = [x for x in creates if x.get("type") == "aws_subnet"]
+if len(subnets) != 1:
+    fail(f"expected exactly one subnet, found {len(subnets)}")
+
+subnet = subnets[0].get("change", {}).get("after", {})
+
+if subnet.get("availability_zone") != EXPECTED_AZ:
+    fail(
+        f"subnet availability zone must be {EXPECTED_AZ}, "
+        f"found {subnet.get(availability_zone)}"
+    )
+
 ingress = [x for x in creates if x.get("type") == "aws_vpc_security_group_ingress_rule"]
 admin_ports, internal = [], 0
 for x in ingress:
@@ -109,6 +122,7 @@ print(f"AMI:                      {AMI}")
 print("Instance types:           " + ", ".join(sorted(ALLOWED_TYPES)))
 print("Root volume ceiling:      60 GB")
 print("Auto-termination:         55 minutes")
+print(f"Availability zone:        {EXPECTED_AZ}")
 print("Admin ingress:            global IPv4 /32 only")
 print("Prohibited-resource scan: PASS")
 print("Saved plan safety check:  PASS")

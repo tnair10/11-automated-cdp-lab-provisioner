@@ -1,10 +1,11 @@
 module "network" {
   source = "../../modules/network"
 
-  project_name = var.project_name
-  vpc_cidr     = var.vpc_cidr
-  subnet_cidr  = var.subnet_cidr
-  admin_cidr   = var.admin_cidr
+  project_name      = var.project_name
+  vpc_cidr          = var.vpc_cidr
+  subnet_cidr       = var.subnet_cidr
+  availability_zone = var.availability_zone
+  admin_cidr        = var.admin_cidr
 }
 
 resource "aws_s3_bucket" "evidence" {

@@ -13,3 +13,10 @@ variable "subnet_cidr" {
 variable "admin_cidr" {
   type = string
 }
+
+variable "availability_zone" {
+  description = "Optional availability zone for the subnet"
+  type        = string
+  default     = null
+  nullable    = true
+}
