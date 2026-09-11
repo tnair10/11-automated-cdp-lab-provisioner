@@ -15,10 +15,11 @@
   "time_synced": true,
   "firewalld_enabled": false,
   "fapolicyd_enabled": false,
-  "selinux": "enforcing",
+  "selinux": "permissive",
   "somaxconn": 16000,
   "swappiness": 1,
   "thp": "never",
   "java_major": 17,
-  "cgroup_mode": "v1"
+  "cgroup_mode": "v1",
+  "ipv6_disabled": true
 }

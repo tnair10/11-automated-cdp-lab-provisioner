@@ -138,6 +138,12 @@ def cgroup_mode() -> str:
     return "unknown"
 
 
+def ipv6_disabled() -> bool:
+    all_disabled = read_int("/proc/sys/net/ipv6/conf/all/disable_ipv6")
+    default_disabled = read_int("/proc/sys/net/ipv6/conf/default/disable_ipv6")
+    return all_disabled == 1 and default_disabled == 1
+
+
 def forward_resolution(name: str, expected_ip: Optional[str]) -> bool:
     if not name:
         return False
@@ -220,6 +226,7 @@ def collect(expected_fqdn: Optional[str], expected_ip: Optional[str]) -> dict:
         "forward_resolution": forward_resolution(check_fqdn, expected_ip),
         "reverse_resolution": reverse_resolution(primary_ip, expected_fqdn),
         "hosts_file_consistent": hosts_file_consistent(check_fqdn, primary_ip),
+        "ipv6_disabled": ipv6_disabled(),
         "chronyd_active": systemd_active("chronyd"),
         "chronyd_enabled": systemd_enabled("chronyd"),
         "time_synced": time_synced(),

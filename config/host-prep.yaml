@@ -26,6 +26,7 @@ network:
   require_forward_resolution: true
   require_reverse_resolution: true
   require_consistent_hosts_file: true
+  require_ipv6_disabled: true
 
 services:
   chronyd:
@@ -36,7 +37,7 @@ services:
   fapolicyd:
     enabled: false
   selinux:
-    mode: enforcing
+    mode: permissive
 
 kernel:
   net.core.somaxconn: 16000

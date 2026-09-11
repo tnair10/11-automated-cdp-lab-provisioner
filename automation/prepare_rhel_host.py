@@ -59,6 +59,11 @@ def evaluate(config, facts):
                              facts.get("hosts_file_consistent"), True,
                              facts.get("hosts_file_consistent") is True))
 
+    if n.get("require_ipv6_disabled"):
+        checks.append(result("network.ipv6_disabled",
+                             facts.get("ipv6_disabled"), True,
+                             facts.get("ipv6_disabled") is True))
+
     checks.extend([
         result("services.chronyd.active", facts.get("chronyd_active"), True,
                facts.get("chronyd_active") is True),
