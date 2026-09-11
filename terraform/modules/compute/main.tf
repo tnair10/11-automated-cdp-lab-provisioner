@@ -3,6 +3,7 @@ resource "aws_instance" "node" {
 
   ami           = var.ami_id
   instance_type = each.value.instance_type
+  key_name      = var.key_name
 
   subnet_id = var.subnet_id
 

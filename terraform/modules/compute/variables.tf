@@ -31,3 +31,10 @@ variable "nodes" {
     root_volume_gb = number
   }))
 }
+
+variable "key_name" {
+  description = "Existing EC2 SSH key pair name"
+  type        = string
+  default     = null
+  nullable    = true
+}
