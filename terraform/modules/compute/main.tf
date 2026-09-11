@@ -17,6 +17,12 @@ resource "aws_instance" "node" {
 
   associate_public_ip_address = true
 
+  instance_initiated_shutdown_behavior = (
+    var.auto_terminate_minutes > 0
+    ? "terminate"
+    : "stop"
+  )
+
   dynamic "root_block_device" {
     for_each = (
       var.configure_root_volume
@@ -25,14 +31,23 @@ resource "aws_instance" "node" {
     )
 
     content {
-      volume_type = "gp3"
-      volume_size = each.value.root_volume_gb
+      volume_type           = "gp3"
+      volume_size           = each.value.root_volume_gb
+      delete_on_termination = true
     }
   }
 
   user_data = <<-EOF
     #!/bin/bash
     echo "${each.key}" > /etc/p11-node-name
+
+    AUTO_TERMINATE_MINUTES="${var.auto_terminate_minutes}"
+
+    if [ "$AUTO_TERMINATE_MINUTES" -gt 0 ]; then
+      echo "$AUTO_TERMINATE_MINUTES" > /etc/p11-auto-terminate-minutes
+
+      /usr/bin/systemd-run         --unit=p11-auto-terminate         --on-active="${var.auto_terminate_minutes}m"         /usr/sbin/shutdown -h now
+    fi
   EOF
 
   tags = {

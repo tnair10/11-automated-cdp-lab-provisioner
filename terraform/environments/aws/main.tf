@@ -81,5 +81,6 @@ module "compute" {
   instance_profile_name = aws_iam_instance_profile.cdp_node.name
   nodes                 = var.nodes
 
-  configure_root_volume = true
+  configure_root_volume  = true
+  auto_terminate_minutes = max(1, var.max_runtime_minutes - 5)
 }
