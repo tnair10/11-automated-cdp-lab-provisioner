@@ -1,0 +1,58 @@
+version: 1
+
+platform:
+  os_family: rhel
+  os_major: 8
+  os_minor: 10
+  architecture: x86_64
+
+cluster:
+  domain: lab.example.com
+  nodes:
+    cm-master-01:
+      role: management
+    worker-01:
+      role: worker
+    worker-02:
+      role: worker
+
+host_requirements:
+  minimum_vcpu: 4
+  minimum_memory_mb: 16384
+  minimum_root_gb: 40
+
+network:
+  require_lowercase_hostname: true
+  require_forward_resolution: true
+  require_reverse_resolution: true
+  require_consistent_hosts_file: true
+
+services:
+  chronyd:
+    required: true
+    enabled: true
+  firewalld:
+    enabled: false
+  fapolicyd:
+    enabled: false
+  selinux:
+    mode: enforcing
+
+kernel:
+  net.core.somaxconn: 16000
+  vm.swappiness: 1
+  transparent_hugepages: never
+
+java:
+  distribution: openjdk
+  major_version: 17
+  require_same_version_all_hosts: true
+
+cgroups:
+  required_mode: v1
+
+validation:
+  fail_on_hostname_error: true
+  fail_on_time_sync_error: true
+  fail_on_java_mismatch: true
+  fail_on_cgroup_v2: true
