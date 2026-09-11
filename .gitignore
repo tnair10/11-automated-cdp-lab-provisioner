@@ -40,3 +40,6 @@ localstack-volume/
 
 # Keep sanitized environment template
 !.env.example
+
+# Local real-AWS Terraform backend configuration
+terraform/environments/aws/backend.local.hcl
