@@ -1,0 +1,40 @@
+lab:
+  name: portfolio-cdp-lab
+  profile: minimal
+  backend: localstack
+  region: us-east-1
+
+nodes:
+  - name: cm-master-01
+    role: management
+    instance_type: m6a.xlarge
+    cpu: 4
+    memory_gb: 16
+    root_volume_gb: 40
+
+  - name: worker-01
+    role: worker
+    instance_type: m6a.xlarge
+    cpu: 4
+    memory_gb: 16
+    root_volume_gb: 40
+
+  - name: worker-02
+    role: worker
+    instance_type: m6a.xlarge
+    cpu: 4
+    memory_gb: 16
+    root_volume_gb: 40
+
+services:
+  - cloudera-manager
+  - zookeeper
+  - hdfs
+  - yarn
+  - hive
+  - spark
+
+security:
+  tls: false
+  kerberos: false
+  ldap: false

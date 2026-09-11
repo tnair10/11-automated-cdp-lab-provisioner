@@ -1,0 +1,11 @@
+name: tls
+
+tls:
+  enabled: true
+  mode: internal-ca
+
+kerberos:
+  enabled: false
+
+ldap:
+  enabled: false

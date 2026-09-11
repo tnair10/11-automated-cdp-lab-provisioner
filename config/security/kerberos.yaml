@@ -1,0 +1,12 @@
+name: kerberos
+
+tls:
+  enabled: false
+
+kerberos:
+  enabled: true
+  provider: mit
+  realm: LAB.EXAMPLE.COM
+
+ldap:
+  enabled: false

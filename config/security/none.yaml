@@ -1,0 +1,10 @@
+name: none
+
+tls:
+  enabled: false
+
+kerberos:
+  enabled: false
+
+ldap:
+  enabled: false

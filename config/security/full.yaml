@@ -1,0 +1,15 @@
+name: full
+
+tls:
+  enabled: true
+  mode: internal-ca
+
+kerberos:
+  enabled: true
+  provider: mit
+  realm: LAB.EXAMPLE.COM
+
+ldap:
+  enabled: true
+  provider: openldap
+  base_dn: dc=lab,dc=example,dc=com

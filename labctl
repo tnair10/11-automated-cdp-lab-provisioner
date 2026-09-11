@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+
+import argparse
+from pathlib import Path
+
+import yaml
+
+from automation.localstack_backend import (
+    destroy as localstack_destroy,
+)
+from automation.localstack_backend import (
+    up as localstack_up,
+)
+from automation.localstack_backend import (
+    validate as localstack_validate,
+)
+
+
+ROOT = Path(__file__).resolve().parent
+
+
+def load_yaml(path):
+    if not path.exists():
+        raise SystemExit(
+            f"Missing configuration: "
+            f"{path}"
+        )
+
+    return yaml.safe_load(
+        path.read_text()
+    )
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description=(
+            "Automated Distributed CDP "
+            "Lab Provisioner"
+        )
+    )
+
+    commands = (
+        parser.add_subparsers(
+            dest="command",
+            required=True,
+        )
+    )
+
+    up = commands.add_parser(
+        "up"
+    )
+
+    up.add_argument(
+        "--backend",
+        choices=[
+            "localstack",
+            "aws",
+            "existing",
+        ],
+        default="localstack",
+    )
+
+    up.add_argument(
+        "--profile",
+        default="minimal",
+    )
+
+    up.add_argument(
+        "--security",
+        choices=[
+            "none",
+            "tls",
+            "kerberos",
+            "ldap",
+            "full",
+        ],
+        default="none",
+    )
+
+    validate = commands.add_parser(
+        "validate"
+    )
+
+    validate.add_argument(
+        "--backend",
+        choices=[
+            "localstack",
+            "aws",
+        ],
+        default="localstack",
+    )
+
+    destroy = commands.add_parser(
+        "destroy"
+    )
+
+    destroy.add_argument(
+        "--backend",
+        choices=[
+            "localstack",
+            "aws",
+        ],
+        default="localstack",
+    )
+
+    args = parser.parse_args()
+
+    if args.command == "up":
+
+        topology = load_yaml(
+            ROOT
+            / "config"
+            / "topology.yaml"
+        )
+
+        profile = load_yaml(
+            ROOT
+            / "config"
+            / "profiles"
+            / f"{args.profile}.yaml"
+        )
+
+        security = load_yaml(
+            ROOT
+            / "config"
+            / "security"
+            / f"{args.security}.yaml"
+        )
+
+        print(
+            "========================================"
+        )
+        print(
+            " AUTOMATED DISTRIBUTED CDP LAB"
+        )
+        print(
+            "========================================"
+        )
+
+        print(
+            f"Lab:      "
+            f"{topology['lab']['name']}"
+        )
+        print(
+            f"Backend:  "
+            f"{args.backend}"
+        )
+        print(
+            f"Profile:  "
+            f"{profile['name']}"
+        )
+        print(
+            f"Security: "
+            f"{security['name']}"
+        )
+        print(
+            f"Nodes:    "
+            f"{len(topology['nodes'])}"
+        )
+
+        if (
+            args.backend
+            == "localstack"
+        ):
+
+            if (
+                args.security
+                != "none"
+            ):
+                raise SystemExit(
+                    "Security profiles are "
+                    "implemented in later stages. "
+                    "Use --security none for now."
+                )
+
+            localstack_up()
+            return
+
+        if args.backend == "aws":
+            raise SystemExit(
+                "SAFETY BLOCK: real AWS "
+                "provisioning is not enabled yet."
+            )
+
+        raise SystemExit(
+            "Existing-host backend "
+            "not implemented yet."
+        )
+
+    if args.command == "validate":
+
+        if (
+            args.backend
+            == "localstack"
+        ):
+            localstack_validate()
+            return
+
+        raise SystemExit(
+            "Real AWS validation "
+            "is not enabled yet."
+        )
+
+    if args.command == "destroy":
+
+        if (
+            args.backend
+            == "localstack"
+        ):
+            localstack_destroy()
+            return
+
+        raise SystemExit(
+            "Real AWS destroy "
+            "is not enabled yet."
+        )
+
+
+if __name__ == "__main__":
+    main()

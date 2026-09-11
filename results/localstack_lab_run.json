@@ -1,0 +1,28 @@
+{
+  "scenario": "localstack_infrastructure_validation",
+  "backend": "localstack",
+  "started_at": "2026-09-11T16:07:51.625403+00:00",
+  "completed_at": "2026-09-11T16:08:16.996236+00:00",
+  "real_aws": false,
+  "aws_cost_usd": 0,
+  "node_count": 3,
+  "instance_states": {
+    "cm-master-01": "running",
+    "worker-01": "running",
+    "worker-02": "running"
+  },
+  "stage_seconds": {
+    "localstack_start": 0.08,
+    "identity_validation": 1.046,
+    "cost_guard": 0.035,
+    "terraform_init": 2.503,
+    "terraform_validate": 3.617,
+    "terraform_plan": 6.732,
+    "terraform_apply": 3.864,
+    "estate_validation": 0.868,
+    "idempotency": 6.622
+  },
+  "total_seconds": 25.369,
+  "terraform_idempotency": true,
+  "overall": "PASS"
+}

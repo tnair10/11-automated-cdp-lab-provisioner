@@ -1,0 +1,42 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# macOS
+.DS_Store
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.jks
+*.kdb
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+*.tfvars
+!*.example.tfvars
+.terraform.lock.hcl.tmp
+
+# Runtime
+results/runtime/
+evidence/runtime/
+
+# Jenkins
+jenkins_home/
+
+# LocalStack persistence
+localstack-volume/
+
+# Logs
+*.log
+
+# Keep sanitized environment template
+!.env.example

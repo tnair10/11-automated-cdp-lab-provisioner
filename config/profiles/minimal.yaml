@@ -1,0 +1,22 @@
+name: minimal
+
+description: >
+  Minimal distributed CDP analytics lab optimized for
+  reusable automated provisioning.
+
+services:
+  - zookeeper
+  - hdfs
+  - yarn
+  - hive
+  - spark
+
+validation:
+  hdfs: true
+  yarn: true
+  hive: true
+  spark: true
+
+target_ready_minutes:
+  min: 15
+  max: 20

@@ -1,0 +1,19 @@
+max_instances: 3
+
+allowed_instance_types:
+  - m6a.xlarge
+  - m6i.xlarge
+
+max_root_volume_gb: 60
+
+max_runtime_minutes: 60
+
+disallowed_services:
+  - nat_gateway
+  - rds
+  - eks
+  - load_balancer
+  - gpu
+
+require_auto_destroy: true
+require_explicit_aws_confirmation: true

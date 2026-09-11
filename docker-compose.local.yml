@@ -1,0 +1,49 @@
+services:
+
+  localstack:
+    image: localstack/localstack:2026.8.2
+    container_name: p11-localstack
+
+    ports:
+      - "127.0.0.1:4567:4566"
+
+    environment:
+      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN}
+      DEBUG: "0"
+      GATEWAY_LISTEN: "0.0.0.0:4566"
+      EC2_VM_MANAGER: "mock"
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:4566/_localstack/health', timeout=3)\""
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 20s
+
+  jenkins:
+    image: project11-jenkins:1.0
+    container_name: p11-jenkins
+
+    user: root
+
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:50000:50000"
+
+    volumes:
+      - jenkins-data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/workspace
+      - p11-terraform-plugin-cache:/terraform-plugin-cache
+
+volumes:
+  jenkins-data:
+  p11-terraform-plugin-cache:
+    external: true
