@@ -21,5 +21,7 @@
   "thp": "never",
   "java_major": 17,
   "cgroup_mode": "v1",
-  "ipv6_disabled": true
+  "ipv6_disabled": true,
+  "vcpu": 4,
+  "java_major_version": 17
 }
