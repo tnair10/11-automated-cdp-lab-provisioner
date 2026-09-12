@@ -177,8 +177,10 @@ def remote(node, command, *, check=True, capture=False):
 
 
 def remote_root(node, script, *, check=True, capture=False):
+    cmd = ssh_base(node)
+    cmd.remove("-n")
     return run(
-        ssh_base(node) + ["sudo", "bash", "-s"],
+        cmd + ["sudo", "bash", "-s"],
         check=check,
         capture=capture,
         input_text=script,
@@ -335,14 +337,34 @@ def prepare():
 
 
 def download_function_shell():
-    return r'''
+    return r"""
 download_verify_sha512() {
   local url="$1" sumurl="$2" dest="$3"
-  if [ -s "$dest" ]; then return 0; fi
-  curl -fL --retry 4 --retry-delay 3 -o "$dest.tmp" "$url"
-  curl -fsSL --retry 4 --retry-delay 3 "$sumurl" -o "$dest.sha512"
   local expected actual
-  expected="$(awk '{print $1}' "$dest.sha512" | head -1)"
+
+  curl -fsSL --retry 4 --retry-delay 3 "$sumurl" -o "$dest.sha512"
+  expected="$(grep -Eo '[0-9A-Fa-f]{128}' "$dest.sha512" | head -1)"
+  test -n "$expected"
+
+  if [ -s "$dest" ]; then
+    actual="$(sha512sum "$dest" | awk '{print $1}')"
+    if [ "$actual" = "$expected" ]; then
+      rm -f "$dest.tmp"
+      return 0
+    fi
+    rm -f "$dest"
+  fi
+
+  if [ -s "$dest.tmp" ]; then
+    actual="$(sha512sum "$dest.tmp" | awk '{print $1}')"
+    if [ "$actual" = "$expected" ]; then
+      mv "$dest.tmp" "$dest"
+      return 0
+    fi
+    rm -f "$dest.tmp"
+  fi
+
+  curl -fL --retry 4 --retry-delay 3 -o "$dest.tmp" "$url"
   actual="$(sha512sum "$dest.tmp" | awk '{print $1}')"
   test "$actual" = "$expected"
   mv "$dest.tmp" "$dest"
@@ -350,17 +372,36 @@ download_verify_sha512() {
 
 download_verify_sha256() {
   local url="$1" sumurl="$2" dest="$3"
-  if [ -s "$dest" ]; then return 0; fi
-  curl -fL --retry 4 --retry-delay 3 -o "$dest.tmp" "$url"
-  curl -fsSL --retry 4 --retry-delay 3 "$sumurl" -o "$dest.sha256"
   local expected actual
-  expected="$(awk '{print $1}' "$dest.sha256" | head -1)"
+
+  curl -fsSL --retry 4 --retry-delay 3 "$sumurl" -o "$dest.sha256"
+  expected="$(grep -Eo '[0-9A-Fa-f]{64}' "$dest.sha256" | head -1)"
+  test -n "$expected"
+
+  if [ -s "$dest" ]; then
+    actual="$(sha256sum "$dest" | awk '{print $1}')"
+    if [ "$actual" = "$expected" ]; then
+      rm -f "$dest.tmp"
+      return 0
+    fi
+    rm -f "$dest"
+  fi
+
+  if [ -s "$dest.tmp" ]; then
+    actual="$(sha256sum "$dest.tmp" | awk '{print $1}')"
+    if [ "$actual" = "$expected" ]; then
+      mv "$dest.tmp" "$dest"
+      return 0
+    fi
+    rm -f "$dest.tmp"
+  fi
+
+  curl -fL --retry 4 --retry-delay 3 -o "$dest.tmp" "$url"
   actual="$(sha256sum "$dest.tmp" | awk '{print $1}')"
   test "$actual" = "$expected"
   mv "$dest.tmp" "$dest"
 }
-'''
-
+"""
 
 def install_hadoop_script():
     funcs = download_function_shell()

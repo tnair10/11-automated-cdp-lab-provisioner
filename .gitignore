@@ -43,3 +43,5 @@ localstack-volume/
 
 # Local real-AWS Terraform backend configuration
 terraform/environments/aws/backend.local.hcl
+
+results/p11-live/
