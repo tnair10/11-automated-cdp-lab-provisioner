@@ -1051,19 +1051,34 @@ def main():
         "command",
         choices=["inventory", "prepare", "install", "configure", "start", "status", "validate", "full"],
     )
+    parser.add_argument(
+        "--profile",
+        choices=["base", "secure"],
+        default="base",
+        help="Deployment profile. base is the validated Hadoop/Hive/Spark stack; secure adds Kerberos/TLS/LDAP.",
+    )
     args = parser.parse_args()
 
     try:
-        {
-            "inventory": inventory,
-            "prepare": prepare,
-            "install": install,
-            "configure": configure,
-            "start": start,
-            "status": status,
-            "validate": validate,
-            "full": full,
-        }[args.command]()
+        if args.command == "full":
+            if args.profile == "base":
+                full()
+            else:
+                raise P11Error(
+                    "secure profile CLI is enabled, but Kerberos/TLS/LDAP stages have not been implemented yet"
+                )
+        else:
+            if args.profile != "base":
+                raise P11Error("--profile secure is currently supported only with the full workflow")
+            {
+                "inventory": inventory,
+                "prepare": prepare,
+                "install": install,
+                "configure": configure,
+                "start": start,
+                "status": status,
+                "validate": validate,
+            }[args.command]()
     except P11Error as e:
         print(f"P11 ERROR: {e}", file=sys.stderr)
         raise SystemExit(2)
