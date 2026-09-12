@@ -297,7 +297,7 @@ mkdir -p {OPT_ROOT} /data/hadoop/tmp /var/log/p11-hadoop
 chown -R hadoop:hadoop {OPT_ROOT} /data/hadoop /var/log/p11-hadoop
 chmod 0755 {OPT_ROOT}
 
-JAVA_BIN="$(readlink -f "$(command -v java)")"
+JAVA_BIN="$(rpm -ql java-17-openjdk-headless | grep -E '/bin/java$' | head -1)"
 JAVA_HOME="$(dirname "$(dirname "$JAVA_BIN")")"
 cat >/etc/profile.d/p11-platform.sh <<EOF
 export JAVA_HOME=$JAVA_HOME
@@ -598,7 +598,7 @@ def configure_node_script(node, nodes):
 
     return f'''set -euo pipefail
 
-JAVA_BIN="$(readlink -f "$(command -v java)")"
+JAVA_BIN="$(rpm -ql java-17-openjdk-headless | grep -E '/bin/java$' | head -1)"
 JAVA_HOME="$(dirname "$(dirname "$JAVA_BIN")")"
 
 mkdir -p \
@@ -630,6 +630,27 @@ cat >{HADOOP_HOME}/etc/hadoop/yarn-site.xml <<'EOF'
 {yarn}EOF
 cat >{HADOOP_HOME}/etc/hadoop/mapred-site.xml <<'EOF'
 {mapred}EOF
+python3 - <<'P11PY'
+from pathlib import Path
+p = Path("{HADOOP_HOME}/etc/hadoop/mapred-site.xml")
+s = p.read_text()
+if "yarn.app.mapreduce.am.env" not in s:
+    props = """  <property>
+    <name>yarn.app.mapreduce.am.env</name>
+    <value>HADOOP_MAPRED_HOME={HADOOP_HOME}</value>
+  </property>
+  <property>
+    <name>mapreduce.map.env</name>
+    <value>HADOOP_MAPRED_HOME={HADOOP_HOME}</value>
+  </property>
+  <property>
+    <name>mapreduce.reduce.env</name>
+    <value>HADOOP_MAPRED_HOME={HADOOP_HOME}</value>
+  </property>
+"""
+    s = s.replace("</configuration>", props + "</configuration>")
+    p.write_text(s)
+P11PY
 cat >{HADOOP_HOME}/etc/hadoop/workers <<'EOF'
 {workers}EOF
 
@@ -640,6 +661,8 @@ export HADOOP_CONF_DIR={HADOOP_HOME}/etc/hadoop
 EOF
 cat >>{HADOOP_HOME}/etc/hadoop/yarn-env.sh <<EOF
 export JAVA_HOME=$JAVA_HOME
+export YARN_RESOURCEMANAGER_OPTS="${{YARN_RESOURCEMANAGER_OPTS:-}} --add-opens=java.base/java.lang=ALL-UNNAMED"
+export YARN_NODEMANAGER_OPTS="${{YARN_NODEMANAGER_OPTS:-}} --add-opens=java.base/java.lang=ALL-UNNAMED"
 EOF
 cat >>{HADOOP_HOME}/etc/hadoop/mapred-env.sh <<EOF
 export JAVA_HOME=$JAVA_HOME
@@ -668,6 +691,8 @@ def configure_hive_master_script(master):
             ("hive.execution.engine", "mr"),
             ("hive.metastore.warehouse.dir", "/user/hive/warehouse"),
             ("hive.server2.enable.doAs", "false"),
+            ("hive.metastore.event.db.notification.api.auth", "false"),
+            ("hive.server2.max.start.attempts", "1"),
         ]
     )
     metastore_unit = systemd_unit(
@@ -692,9 +717,25 @@ if [ ! -f /var/lib/pgsql/data/PG_VERSION ]; then
 fi
 
 HBA=/var/lib/pgsql/data/pg_hba.conf
-if ! grep -Eq '^host[[:space:]]+all[[:space:]]+all[[:space:]]+127\\.0\\.0\\.1/32[[:space:]]+' "$HBA"; then
-  sed -i '1ihost all all 127.0.0.1/32 md5' "$HBA"
-fi
+python3 - <<'P11PG'
+from pathlib import Path
+p = Path("/var/lib/pgsql/data/pg_hba.conf")
+lines = p.read_text().splitlines()
+out = []
+found = False
+for line in lines:
+    fields = line.split()
+    if len(fields) >= 5 and fields[:4] == ["host", "all", "all", "127.0.0.1/32"]:
+        if fields[4] in ("ident", "peer"):
+            fields[4] = "md5"
+            line = "\t".join(fields)
+        if fields[4] in ("md5", "scram-sha-256"):
+            found = True
+    out.append(line)
+if not found:
+    out.insert(0, "host all all 127.0.0.1/32 md5")
+p.write_text(chr(10).join(out) + chr(10))
+P11PG
 systemctl enable --now postgresql
 
 if ! sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='hive'" | grep -q 1; then
@@ -714,15 +755,21 @@ ln -sfn "$JDBC_JAR" {HIVE_HOME}/lib/postgresql-jdbc.jar
 cat >{HIVE_HOME}/conf/hive-site.xml <<'EOF'
 {hive_site}EOF
 sed -i "s/__P11_HIVE_DB_PASSWORD__/$HIVE_DB_PASSWORD/" {HIVE_HOME}/conf/hive-site.xml
+chmod 0755 {HIVE_HOME} {HIVE_HOME}/conf
+chown root:hadoop {HIVE_HOME}/conf/hive-site.xml
+chmod 0640 {HIVE_HOME}/conf/hive-site.xml
+
 
 cat >{HIVE_HOME}/conf/hive-env.sh <<EOF
-export JAVA_HOME=\\$(dirname \\$(dirname \\$(readlink -f \\$(command -v java))))
+export JAVA_HOME=\\$(dirname \\$(dirname \\$(rpm -ql java-17-openjdk-headless | grep -E "/bin/java$" | head -1)))
 export HADOOP_HOME={HADOOP_HOME}
 export HADOOP_CONF_DIR={HADOOP_HOME}/etc/hadoop
 export HIVE_HOME={HIVE_HOME}
 EOF
 chmod 0755 {HIVE_HOME}/conf/hive-env.sh
 chown -R hadoop:hadoop {HIVE_HOME}
+chown root:hadoop {HIVE_HOME}/conf/hive-site.xml
+chmod 0640 {HIVE_HOME}/conf/hive-site.xml
 
 if ! sudo -u hadoop bash -lc '. /etc/p11-platform.env; {HIVE_HOME}/bin/schematool -dbType postgres -info' >/tmp/p11-schematool-info.log 2>&1; then
   sudo -u hadoop bash -lc '. /etc/p11-platform.env; {HIVE_HOME}/bin/schematool -dbType postgres -initSchema'
@@ -741,7 +788,7 @@ echo P11_HIVE_CONFIGURED
 def configure_spark_master_script():
     return f'''set -euo pipefail
 cat >{SPARK_HOME}/conf/spark-env.sh <<'EOF'
-export JAVA_HOME=$(dirname $(dirname $(readlink -f $(command -v java))))
+export JAVA_HOME=$(dirname $(dirname $(rpm -ql java-17-openjdk-headless | grep -E "/bin/java$" | head -1)))
 export HADOOP_CONF_DIR={HADOOP_HOME}/etc/hadoop
 export YARN_CONF_DIR={HADOOP_HOME}/etc/hadoop
 EOF
@@ -892,7 +939,7 @@ printf "project11\\ndistributed-hadoop\\n" >/tmp/p11-hdfs-input.txt; \
 
     yarn_nodes = remote(
         master,
-        f"sudo -u hadoop bash -lc '. /etc/p11-platform.env; {HADOOP_HOME}/bin/yarn node -list -all'",
+        f"sudo -u hadoop bash -lc '. /etc/p11-platform.env; timeout 20s {HADOOP_HOME}/bin/yarn node -list -all'",
         capture=True,
     ).stdout
     if yarn_nodes.count("RUNNING") < 2:
@@ -902,7 +949,7 @@ printf "project11\\ndistributed-hadoop\\n" >/tmp/p11-hdfs-input.txt; \
     mr = remote(
         master,
         f'''sudo -u hadoop bash -lc '. /etc/p11-platform.env; \
-{HADOOP_HOME}/bin/yarn jar \
+timeout 180s {HADOOP_HOME}/bin/yarn jar \
 {HADOOP_HOME}/share/hadoop/mapreduce/hadoop-mapreduce-examples-{HADOOP_VERSION}.jar pi 2 100' ''',
         capture=True,
     )
@@ -913,20 +960,24 @@ printf "project11\\ndistributed-hadoop\\n" >/tmp/p11-hdfs-input.txt; \
     evidence["tests"]["mapreduce"] = "PASS"
 
     remote_root(master, "printf '1\\n2\\n3\\n' >/tmp/p11-hive-numbers.txt; chmod 0644 /tmp/p11-hive-numbers.txt")
-    hive_sql = (
-        "CREATE DATABASE IF NOT EXISTS p11; "
-        "USE p11; "
-        "DROP TABLE IF EXISTS numbers; "
-        "CREATE TABLE numbers(n INT) STORED AS TEXTFILE; "
-        "LOAD DATA LOCAL INPATH '/tmp/p11-hive-numbers.txt' OVERWRITE INTO TABLE numbers; "
-        "SELECT SUM(n) AS total FROM numbers;"
+    hive_sql = """CREATE DATABASE IF NOT EXISTS p11;
+USE p11;
+DROP TABLE IF EXISTS numbers;
+CREATE TABLE numbers(n INT) STORED AS TEXTFILE;
+LOAD DATA LOCAL INPATH '/tmp/p11-hive-numbers.txt' OVERWRITE INTO TABLE numbers;
+SELECT SUM(n) AS total FROM numbers;
+"""
+    remote_root(
+        master,
+        f"""cat >/tmp/p11-hive-validate.sql <<'P11SQL'
+{hive_sql}P11SQL
+chown hadoop:hadoop /tmp/p11-hive-numbers.txt /tmp/p11-hive-validate.sql
+chmod 0644 /tmp/p11-hive-numbers.txt /tmp/p11-hive-validate.sql
+""",
     )
     hive = remote(
         master,
-        f'''sudo -u hadoop bash -lc '. /etc/p11-platform.env; \
-{HIVE_HOME}/bin/beeline -u jdbc:hive2://localhost:10000/default \
---silent=true --showHeader=false --outputformat=tsv2 \
--e {shlex.quote(hive_sql)}' ''',
+        f"""sudo -u hadoop bash -lc '. /etc/p11-platform.env; timeout 120s {HIVE_HOME}/bin/beeline -u jdbc:hive2://{master["fqdn"]}:10000/default --silent=true --showHeader=false --outputformat=tsv2 -f /tmp/p11-hive-validate.sql'""",
         capture=True,
     )
     hive_text = (hive.stdout or "") + (hive.stderr or "")
