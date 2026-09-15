@@ -17,11 +17,8 @@ resource "aws_instance" "node" {
 
   associate_public_ip_address = true
 
-  instance_initiated_shutdown_behavior = (
-    var.auto_terminate_minutes > 0
-    ? "terminate"
-    : "stop"
-  )
+  # Cost guard: guest shutdown must STOP the instance, never terminate it.
+  instance_initiated_shutdown_behavior = "stop"
 
   dynamic "root_block_device" {
     for_each = (
@@ -39,15 +36,36 @@ resource "aws_instance" "node" {
 
   user_data = <<-EOF
     #!/bin/bash
+    set -eu
+
     echo "${each.key}" > /etc/p11-node-name
+    echo "${var.auto_terminate_minutes}" > /etc/p11-auto-stop-minutes
 
-    AUTO_TERMINATE_MINUTES="${var.auto_terminate_minutes}"
+    cat >/etc/systemd/system/p11-auto-stop.service <<'UNIT'
+    [Unit]
+    Description=Project 11 automatic EC2 stop
 
-    if [ "$AUTO_TERMINATE_MINUTES" -gt 0 ]; then
-      echo "$AUTO_TERMINATE_MINUTES" > /etc/p11-auto-terminate-minutes
+    [Service]
+    Type=oneshot
+    ExecStart=/usr/sbin/shutdown -h now
+    UNIT
 
-      /usr/bin/systemd-run         --unit=p11-auto-terminate         --on-active="${var.auto_terminate_minutes}m"         /usr/sbin/shutdown -h now
-    fi
+    cat >/etc/systemd/system/p11-auto-stop.timer <<'UNIT'
+    [Unit]
+    Description=Project 11 automatic EC2 stop timer
+
+    [Timer]
+    OnBootSec=${var.auto_terminate_minutes}min
+    Unit=p11-auto-stop.service
+    AccuracySec=30s
+    Persistent=false
+
+    [Install]
+    WantedBy=timers.target
+    UNIT
+
+    systemctl daemon-reload
+    systemctl enable --now p11-auto-stop.timer
   EOF
 
   tags = {

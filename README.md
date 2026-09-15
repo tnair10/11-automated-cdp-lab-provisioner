@@ -512,40 +512,77 @@ Only after these checks pass will the environment be marked ready.
 ### Completed
 
 - Stage 1 — Local development foundation
-- Stage 2 — Terraform infrastructure
-- Stage 3 — One-command `labctl` automation
-- Stage 4 — Jenkins-driven provisioning pipeline
+- Stage 2 — Terraform-based AWS infrastructure
+- Stage 3 — AWS safety controls and automatic instance shutdown
+- Stage 4 — Reproducible non-secure distributed platform build
+- Stage 5 — Linux host bootstrap and platform installation
+- Stage 6 — Apache Hadoop 3.4.1 distributed HDFS and YARN deployment
+- Stage 7 — Apache Hive 4.1.0 and Apache Spark 3.5.9 deployment
+- Stage 8 — Non-secure functional validation
+- Stage 9 — LinuxContainerExecutor and workload-user isolation
+- Stage 10 — Kerberos authentication automation
+- Stage 11 — TLS certificate and truststore automation
+- Stage 12 — LDAP / LDAPS directory automation
+- Stage 13 — Kerberos-secured HDFS and YARN
+- Stage 14 — Kerberos-secured Hive Metastore
+- Stage 15 — TLS + LDAP-authenticated HiveServer2
+- Stage 16 — JCEKS-protected Hive LDAP bind credentials
+- Stage 17 — Secure MapReduce validation as `p11admin`
+- Stage 18 — Secure Spark-on-YARN validation as `p11admin`
+- Stage 19 — End-to-end secure acceptance validation
+- Stage 20 — Terraform idempotency validation
+- Stage 21 — One-command non-secure and secure cluster runners
 
-### Planned
+### Validated Profiles
 
-- Stage 5 — Real AWS safety backend
-- Stage 6 — Linux host bootstrap
-- Stage 7 — Cloudera Manager installation
-- Stage 8 — CDP Runtime deployment
-- Stage 9 — Functional workload validation
-- Stage 10 — Real provisioning benchmark
-- Stage 11 — TLS automation
-- Stage 12 — Kerberos automation
-- Stage 13 — LDAP / LDAPS automation
+The repository provides two executable real-AWS workflows:
 
----
+- `run_nonsecure_cluster.sh` — provisions and validates the base distributed platform.
+- `run_secure_cluster.sh` — provisions the base platform and then applies the full security stack in dependency order.
 
+The secure profile validates:
+
+- local workload identity separation,
+- LinuxContainerExecutor,
+- Kerberos authentication,
+- TLS certificates and trust,
+- secured HDFS,
+- secured YARN,
+- MapReduce as a non-service workload user,
+- LDAP and LDAPS,
+- Kerberos-protected Hive Metastore,
+- TLS and LDAP-authenticated HiveServer2,
+- credential-store protection for the Hive LDAP bind password,
+- functional Hive SQL,
+- and Spark-on-YARN as `p11admin`.
+
+### Future Enhancements
+
+- Clean-from-zero regression execution of the finalized secure runner
+- CI execution and evidence archival for the real-AWS workflows
+- Additional workload and failure-recovery scenarios
+- Expanded benchmarking and provisioning-time measurements
 ## Project Goal
 
 The goal is not simply to create infrastructure.
 
-The project is designed to demonstrate a reusable engineering workflow that can:
+The project demonstrates a reusable engineering workflow that can:
 
-1. provision a repeatable distributed environment,
+1. provision a repeatable distributed environment on real AWS infrastructure,
 2. enforce infrastructure and cost safeguards,
-3. configure platform prerequisites,
-4. deploy distributed services,
-5. validate actual functionality,
-6. prove infrastructure idempotency,
-7. generate measurable evidence,
-8. archive results through Jenkins,
-9. and automatically tear down temporary infrastructure.
+3. bootstrap Linux hosts,
+4. install and configure distributed data-platform services,
+5. establish both non-secure and secure operating profiles,
+6. automate Kerberos, TLS, LDAP / LDAPS, and Linux workload isolation,
+7. validate HDFS, YARN, MapReduce, Hive, and Spark with real workloads,
+8. prove infrastructure idempotency,
+9. generate machine-readable validation evidence,
+10. and safely stop or tear down temporary infrastructure.
 
-The LocalStack implementation provides the safe development and CI foundation.
+The secure workflow builds the base platform first and then applies security controls in dependency order:
 
-The final implementation will extend the same workflow to short-lived real Linux infrastructure and an actual distributed CDP Runtime environment.
+`Identity → LinuxContainerExecutor → Kerberos → TLS → Hadoop security → LDAP/LDAPS → Hive security → final acceptance`
+
+The implementation intentionally uses upstream Apache Hadoop, Apache Hive, Apache Spark, and 389 Directory Server so that the complete environment can be built and validated without proprietary platform dependencies.
+
+> **Scope note:** This repository is a distributed data-platform automation and security lab. It does not install Cloudera Manager or proprietary Cloudera CDP Runtime components. The architecture and security mechanisms are designed to demonstrate engineering concepts directly relevant to enterprise Hadoop-based platforms without claiming to be a CDP deployment.
