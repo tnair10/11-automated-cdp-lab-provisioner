@@ -507,6 +507,143 @@ Only after these checks pass will the environment be marked ready.
 
 ---
 
+## Quick Start — Run in Your Own AWS Account
+
+Project 11 provides two real-AWS workflows:
+
+- `./run_nonsecure_cluster.sh` — builds and validates the base Hadoop/Hive/Spark environment.
+- `./run_secure_cluster.sh` — builds the base environment and applies the full security stack.
+
+### Prerequisites
+
+Install:
+
+- AWS CLI
+- Terraform
+- Python 3.11+
+- OpenSSH
+- Git
+
+### 1. Configure AWS access
+
+The tested configuration uses `us-east-1`.
+
+```bash
+export AWS_PROFILE=p11-lab
+export AWS_REGION=us-east-1
+export AWS_DEFAULT_REGION="$AWS_REGION"
+
+aws sts get-caller-identity   --profile "$AWS_PROFILE"   --region "$AWS_REGION"
+```
+
+Use your own AWS CLI profile name if it is not `p11-lab`.
+
+### 2. Create the EC2 SSH key
+
+```bash
+mkdir -p ~/.ssh
+
+aws ec2 create-key-pair   --profile "$AWS_PROFILE"   --region "$AWS_REGION"   --key-name p11-cdp-lab   --query 'KeyMaterial'   --output text > ~/.ssh/p11-cdp-lab
+
+chmod 600 ~/.ssh/p11-cdp-lab
+```
+
+If the AWS key pair already exists, use the matching private key instead of creating another key.
+
+### 3. Create the Python environment
+
+```bash
+python3.11 -m venv .venv
+./.venv/bin/python -m pip install --upgrade pip
+./.venv/bin/pip install -r requirements-p11.txt
+```
+
+### 4. Authorize real AWS operations
+
+```bash
+export P11_ALLOW_AWS=YES
+```
+
+The infrastructure wrapper intentionally refuses billable or destructive AWS operations unless this variable is set.
+
+### 5. Run the non-secure profile
+
+```bash
+./run_nonsecure_cluster.sh
+```
+
+This provisions AWS infrastructure, bootstraps the Linux hosts, installs Hadoop/Hive/Spark, configures the distributed services, runs functional workloads, validates Terraform idempotency, and writes evidence under:
+
+```text
+results/p11-live/nonsecure/
+```
+
+### 6. Run the secure profile
+
+```bash
+./run_secure_cluster.sh
+```
+
+The secure workflow applies:
+
+```text
+Base Hadoop / Hive / Spark
+    ↓
+Identity isolation
+    ↓
+LinuxContainerExecutor
+    ↓
+Kerberos
+    ↓
+TLS
+    ↓
+Secured HDFS / YARN
+    ↓
+LDAP / LDAPS
+    ↓
+Kerberos-secured Hive Metastore
+    ↓
+TLS + LDAP HiveServer2
+    ↓
+Secure MapReduce
+    ↓
+Secure Spark-on-YARN
+    ↓
+End-to-end acceptance validation
+```
+
+Secure evidence is written under:
+
+```text
+results/p11-live/secure/
+```
+
+A successful secure run ends with `overall: PASS`.
+
+### 7. Destroy the AWS environment
+
+When finished:
+
+```bash
+P11_ALLOW_AWS=YES scripts/p11_aws_infra.sh destroy
+```
+
+To automatically destroy the environment after a successful run:
+
+```bash
+P11_ALLOW_AWS=YES P11_AUTO_DESTROY=1 ./run_secure_cluster.sh
+```
+
+The same option can be used with `run_nonsecure_cluster.sh`.
+
+### Using another AWS account or region
+
+Set `AWS_PROFILE` to the profile for the target AWS account.
+
+The tested configuration uses `us-east-1`. If you change regions, review the Terraform AMI configuration because AMI IDs are region-specific.
+
+---
+
 ## Project Roadmap
 
 ### Completed
